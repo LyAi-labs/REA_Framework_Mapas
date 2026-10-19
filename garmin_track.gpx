@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Garmin Edge">
+  <trk>
+    <name>Track REA Garmin</name>
+    <trkseg>
+      <trkpt lat="37.0543" lon="-3.4812"><ele>2100.0</ele></trkpt>
+      <trkpt lat="37.0560" lon="-3.4795"><ele>2105.0</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
