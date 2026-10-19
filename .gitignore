@@ -1,0 +1,7 @@
+node_modules/
+dist/
+test-watch.log
+test-watch.pid
+apks/
+decompiled/
+
