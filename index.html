@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Motor Topografico 3D - Localhost</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background: #111; color: #fff; display: flex; height: 100vh; }
+        #sidebar { width: 350px; padding: 20px; background: #1a1a1a; overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 1000; }
+        #map { flex-grow: 1; height: 100%; }
+        h2 { color: #00e5ff; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .metric-box { background: #2a2a2a; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #00e5ff; }
+        .file-input { background: #333; padding: 10px; border-radius: 4px; border: 1px dashed #555; width: 100%; box-sizing: border-box; cursor: pointer; color: #ccc; }
+        .legend { margin-top: 20px; font-size: 12px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .color-box { width: 20px; height: 10px; margin-right: 10px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Enrutador 3D Real</h2>
+    <p style="font-size: 12px; color: #aaa;">Sube un archivo de ruta (GeoJSON) para procesar el relieve tridimensional con la funcion de Tobler.</p>
+
+    <input type="file" id="fileRequest" class="file-input" accept=".geojson,.json" />
+
+    <div id="resultados" style="margin-top: 20px; display: none;">
+        <div class="metric-box">
+            <strong>Distancia Plana:</strong> <span id="m-dist">0</span> m
+        </div>
+        <div class="metric-box" style="border-left-color: #ffcc00;">
+            <strong>Desnivel Positivo:</strong> +<span id="m-desnivel">0</span> m
+        </div>
+        <div class="metric-box" style="border-left-color: #2ecc71;">
+            <strong>Tiempo de Marcha:</strong> <span id="m-tiempo">0</span> min
+        </div>
+        <div class="metric-box" style="border-left-color: #e74c3c;">
+            <strong>Carga Metabolica:</strong> <span id="m-carga">0</span> m equiv.
+        </div>
+    </div>
+
+    <div class="legend">
+        <strong>Codigo cromatico de pendientes:</strong>
+        <div class="legend-item"><div class="color-box" style="background: #2ecc71;"></div> Verde: Seguro (&lt;15%)</div>
+        <div class="legend-item"><div class="color-box" style="background: #f39c12;"></div> Naranja: Moderado (15-35%)</div>
+        <div class="legend-item"><div class="color-box" style="background: #e74c3c;"></div> Rojo: Muro Peligroso (&gt;35%)</div>
+        <div class="legend-item"><div class="color-box" style="background: #3498db;"></div> Azul: Descenso Tecnico</div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+    var map = L.map('map').setView([37.0560, -3.4795], 14);
+
+    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: 'Map data: OpenStreetMap, SRTM | Style: OpenTopoMap'
+    }).addTo(map);
+
+    var trackPrueba = [
+        [-3.4812, 37.0543, 2100],
+        [-3.4795, 37.0560, 2105],
+        [-3.4750, 37.0610, 2350],
+        [-3.4720, 37.0635, 2330],
+        [-3.4685, 37.0660, 2500]
+    ];
+
+    var rutaLayers = [];
+
+    procesarMatrizPuntos(trackPrueba);
+
+    document.getElementById('fileRequest').addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                var geojson = JSON.parse(evt.target.result);
+                var coords = [];
+                if (geojson.geometry && geojson.geometry.coordinates) {
+                    coords = geojson.geometry.coordinates;
+                } else if (geojson.features && geojson.features.length > 0) {
+                    coords = geojson.features[0].geometry.coordinates;
+                } else if (geojson.coordinates) {
+                    coords = geojson.coordinates;
+                }
+                if (coords.length > 0) {
+                    procesarMatrizPuntos(coords);
+                } else {
+                    alert('No se encontraron coordenadas validas.');
+                }
+            } catch(err) {
+                alert('Error al parsear el archivo GeoJSON: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    function calcularHaversine(lon1, lat1, lon2, lat2) {
+        var R = 6371000;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLon = (lon2 - lon1) * Math.PI / 180;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function procesarMatrizPuntos(puntos) {
+        for (var j = 0; j < rutaLayers.length; j++) {
+            map.removeLayer(rutaLayers[j]);
+        }
+        rutaLayers = [];
+
+        var distTotal = 0, tiempoTotal = 0, desnivelPos = 0;
+        var latLngsForBounds = [];
+
+        for (var i = 0; i < puntos.length - 1; i++) {
+            var p1 = puntos[i], p2 = puntos[i + 1];
+            var distH = calcularHaversine(p1[0], p1[1], p2[0], p2[1]);
+            var dZ = p2[2] - p1[2];
+
+            if (dZ > 0) desnivelPos += dZ;
+
+            var pct = distH > 0 ? (dZ / distH) * 100 : 0;
+            var seno = distH > 0 ? dZ / distH : 0;
+
+            var vel = 6 * Math.exp(-3.5 * Math.abs(seno + 0.05));
+            var t = vel > 0 ? ((distH / 1000) / vel) * 60 : 0;
+
+            distTotal += distH;
+            tiempoTotal += t;
+
+            var color = '#2ecc71';
+            if (dZ < -5) color = '#3498db';
+            else if (Math.abs(pct) > 35) color = '#e74c3c';
+            else if (Math.abs(pct) > 15) color = '#f39c12';
+
+            var coordA = [p1[1], p1[0]];
+            var coordB = [p2[1], p2[0]];
+            latLngsForBounds.push(coordA, coordB);
+
+            var line = L.polyline([coordA, coordB], { color: color, weight: 5, opacity: 0.9 }).addTo(map);
+            rutaLayers.push(line);
+        }
+
+        document.getElementById('m-dist').innerText = Math.round(distTotal);
+        document.getElementById('m-desnivel').innerText = Math.round(desnivelPos);
+        document.getElementById('m-tiempo').innerText = Math.round(tiempoTotal);
+        document.getElementById('m-carga').innerText = Math.round(distTotal + (desnivelPos * 10));
+        document.getElementById('resultados').style.display = 'block';
+
+        map.fitBounds(L.latLngBounds(latLngsForBounds).pad(0.1));
+    }
+</script>
+</body>
+</html>
