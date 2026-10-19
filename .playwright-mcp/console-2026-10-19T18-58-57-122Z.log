@@ -1,0 +1,5 @@
+[     441ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://play.google.com/store/search?q=aramon%20monta%C3%B1as&c=apps:0
+[     441ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://www.gstatic.com/_/boq-play/_/js/k=boq-play.PlayStoreUi.en_US.9WSKr91d4Yw.2021.O/am=QHaimBoAAABgwgU7KAAT/d=1/excm=_b,_tp,searchview/ed=1/dg=0/wt=2/ujg=1/rs=AB1caFUX3tC6tD81gCNAGo2yTDaAbGePAw/dti=1/m=_b,_tp:0
+[    4434ms] [ERROR] Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR.QUIC_NETWORK_IDLE_TIMEOUT @ https://fonts.gstatic.com/s/i/productlogos/avatar_anonymous/v4/web-32dp/logo_avatar_anonymous_color_1x_web_32dp.png:0
+[    4442ms] [ERROR] Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR.QUIC_NETWORK_IDLE_TIMEOUT @ https://fonts.gstatic.com/s/googlematerialicons/v144/Gw6kwdfw6UnXLJCcmafZyFRXb3BL9rvi0QZG3Q.woff2:0
+[    4442ms] [ERROR] Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR.QUIC_NETWORK_IDLE_TIMEOUT @ https://fonts.gstatic.com/s/googlesans/v62/4UasrENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RPjIUvQ.woff2:0

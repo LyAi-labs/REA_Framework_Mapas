@@ -111,3 +111,14 @@ test("crearGrafoDesdeSlopesGeoJSON construye el grafo topologico de Dents du Mid
     }
 });
 
+test("getTodosLosNodos y encontrarNodoMasCercano devuelven el nodo topologico mas proximo", () => {
+    const g = construirGrafoPortesDuSoleil();
+    const todos = g.getTodosLosNodos();
+    assert.equal(todos.length, 5);
+
+    // Buscamos un punto a 10 metros de Avoriaz (46.1913, 6.7740)
+    const masCercano = g.encontrarNodoMasCercano(46.1914, 6.7741);
+    assert.ok(masCercano !== null);
+    assert.equal(masCercano!.id, "avoriaz");
+});
+

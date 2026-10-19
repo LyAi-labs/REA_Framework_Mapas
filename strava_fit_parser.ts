@@ -1,7 +1,10 @@
 // Parser de archivos FIT (Garmin/Strava) a coordenadas 3D
 // Convierte registros binarios FIT a formato compatible con el motor geometrico
+//
+// Usa DataView/Uint8Array (no Buffer de Node) para poder ejecutarse igual en
+// Node (tests) y en el navegador (lectura de un .fit subido desde el mapa web).
 
-import { analizarRutaGeoJSON, ResumenRuta } from "./turf_framework_core";
+import { analizarRutaGeoJSON, ResumenRuta } from "./turf_framework_core.js";
 
 const SEMICIRCULOS_A_GRADOS = 180 / Math.pow(2, 31);
 
@@ -20,33 +23,40 @@ interface CabeceraFIT {
     firma: string;
 }
 
+function toUint8Array(datos: Uint8Array | ArrayBuffer): Uint8Array {
+    return datos instanceof Uint8Array ? datos : new Uint8Array(datos);
+}
+
 export class FitBinaryParser {
 
-    parsearCabecera(buffer: Buffer): CabeceraFIT {
+    parsearCabecera(bytes: Uint8Array): CabeceraFIT {
+        const vista = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        const firma = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
         return {
-            tamano: buffer.readUInt8(0),
-            protocolo: buffer.readUInt8(1),
-            perfil: buffer.readUInt16LE(2),
-            tamanoRegistros: buffer.readUInt32LE(4),
-            firma: buffer.toString("ascii", 8, 12)
+            tamano: vista.getUint8(0),
+            protocolo: vista.getUint8(1),
+            perfil: vista.getUint16(2, true),
+            tamanoRegistros: vista.getUint32(4, true),
+            firma
         };
     }
 
-    parsearRegistro(buffer: Buffer, offset: number): RegistroFIT {
+    parsearRegistro(bytes: Uint8Array, offset: number): RegistroFIT {
+        const vista = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         return {
-            timestamp: buffer.readUInt32LE(offset),
-            latitud: buffer.readInt32LE(offset + 4) * SEMICIRCULOS_A_GRADOS,
-            longitud: buffer.readInt32LE(offset + 8) * SEMICIRCULOS_A_GRADOS,
-            altitud: (buffer.readUInt16LE(offset + 12) / 5) - 500
+            timestamp: vista.getUint32(offset, true),
+            latitud: vista.getInt32(offset + 4, true) * SEMICIRCULOS_A_GRADOS,
+            longitud: vista.getInt32(offset + 8, true) * SEMICIRCULOS_A_GRADOS,
+            altitud: (vista.getUint16(offset + 12, true) / 5) - 500
         };
     }
 
-    parsearTodosLosRegistros(buffer: Buffer, offsetInicial: number, tamanoRegistro: number): RegistroFIT[] {
+    parsearTodosLosRegistros(bytes: Uint8Array, offsetInicial: number, tamanoRegistro: number): RegistroFIT[] {
         const registros: RegistroFIT[] = [];
         let offset = offsetInicial;
 
-        while (offset + tamanoRegistro <= buffer.length - 2) {
-            const reg = this.parsearRegistro(buffer, offset);
+        while (offset + tamanoRegistro <= bytes.length - 2) {
+            const reg = this.parsearRegistro(bytes, offset);
 
             // Filtrar registros invalidos (coordenadas en 0 o fuera de rango)
             if (reg.latitud !== 0 && reg.longitud !== 0 &&
@@ -68,15 +78,22 @@ export class FitBinaryParser {
         };
     }
 
-    analizarArchivo(buffer: Buffer, tamanoRegistro: number = 14): ResumenRuta | null {
-        const cabecera = this.parsearCabecera(buffer);
+    analizarArchivo(datos: Uint8Array | ArrayBuffer, tamanoRegistro: number = 14): ResumenRuta | null {
+        const bytes = toUint8Array(datos);
+
+        if (bytes.length < 14) {
+            console.error("Archivo demasiado pequeno para ser un FIT valido");
+            return null;
+        }
+
+        const cabecera = this.parsearCabecera(bytes);
 
         if (cabecera.firma !== ".FIT") {
             console.error("Archivo no es formato FIT valido");
             return null;
         }
 
-        const registros = this.parsearTodosLosRegistros(buffer, cabecera.tamano, tamanoRegistro);
+        const registros = this.parsearTodosLosRegistros(bytes, cabecera.tamano, tamanoRegistro);
 
         if (registros.length < 2) {
             console.error("No hay suficientes puntos GPS en el archivo");
@@ -85,5 +102,20 @@ export class FitBinaryParser {
 
         const geojson = this.registrosAGeoJSON(registros);
         return analizarRutaGeoJSON(geojson);
+    }
+
+    /** Como analizarArchivo, pero devuelve el GeoJSON de coordenadas en vez del resumen ya calculado. */
+    archivoAGeoJSON(datos: Uint8Array | ArrayBuffer, tamanoRegistro: number = 14): { geometry: { coordinates: number[][] } } | null {
+        const bytes = toUint8Array(datos);
+
+        if (bytes.length < 14) return null;
+
+        const cabecera = this.parsearCabecera(bytes);
+        if (cabecera.firma !== ".FIT") return null;
+
+        const registros = this.parsearTodosLosRegistros(bytes, cabecera.tamano, tamanoRegistro);
+        if (registros.length < 2) return null;
+
+        return this.registrosAGeoJSON(registros);
     }
 }

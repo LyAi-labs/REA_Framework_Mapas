@@ -1,0 +1,44 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Enrutador 3D Real" [level=2] [ref=e3]
+    - paragraph [ref=e4]: Sube un archivo de ruta (GeoJSON) para procesar el relieve tridimensional con la funcion de Tobler.
+    - button "Choose File" [active] [ref=e5] [cursor=pointer]
+    - paragraph [ref=e6]: Acepta GeoJSON 3D o binarios .FIT (Garmin/Strava).
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - strong [ref=e9]: "Distancia Plana:"
+        - text: 6426 m
+      - generic [ref=e10]:
+        - strong [ref=e11]: "Desnivel Positivo:"
+        - text: +327 m
+      - generic [ref=e12]:
+        - strong [ref=e13]: "Tiempo de Marcha:"
+        - text: 139 min
+      - generic [ref=e14]:
+        - strong [ref=e15]: "Carga Metabolica:"
+        - text: 9696 m equiv.
+    - generic [ref=e16]:
+      - strong [ref=e17]: "Codigo cromatico de pendientes:"
+      - generic [ref=e18]: "Verde: Seguro (<15%)"
+      - generic [ref=e20]: "Naranja: Moderado (15-35%)"
+      - generic [ref=e22]: "Rojo: Muro Peligroso (>35%)"
+      - generic [ref=e24]: "Azul: Descenso Tecnico"
+  - generic [ref=e26]:
+    - generic:
+      - generic:
+        - img:
+          - generic:
+            - generic [ref=e48] [cursor=pointer]
+            - generic [ref=e49] [cursor=pointer]
+            - generic [ref=e50] [cursor=pointer]
+            - generic [ref=e51] [cursor=pointer]
+            - generic [ref=e52] [cursor=pointer]
+            - generic [ref=e53] [cursor=pointer]
+    - generic:
+      - generic [ref=e39]:
+        - button "Zoom in" [ref=e40] [cursor=pointer]: +
+        - button "Zoom out" [ref=e41] [cursor=pointer]: −
+      - generic [ref=e42]:
+        - link "Leaflet" [ref=e43] [cursor=pointer]:
+          - /url: https://leafletjs.com
+        - text: "| Map data: OpenStreetMap, SRTM | Style: OpenTopoMap"

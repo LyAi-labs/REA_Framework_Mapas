@@ -106,6 +106,23 @@ export class GrafoRutas {
         return this.nodos.get(id);
     }
 
+    getTodosLosNodos(): NodoRuta[] {
+        return Array.from(this.nodos.values());
+    }
+
+    encontrarNodoMasCercano(lat: number, lon: number): NodoRuta | null {
+        let mejor: NodoRuta | null = null;
+        let mejorDistancia = Infinity;
+        for (const n of this.nodos.values()) {
+            const d = haversine(lon, lat, n.lon, n.lat);
+            if (d < mejorDistancia) {
+                mejorDistancia = d;
+                mejor = n;
+            }
+        }
+        return mejor;
+    }
+
     /** Dijkstra ponderado por tiempo (minutos). Devuelve null si no hay camino. */
     calcularRutaOptima(origenId: string, destinoId: string): RutaCalculada | null {
         const origen = this.nodos.get(origenId);

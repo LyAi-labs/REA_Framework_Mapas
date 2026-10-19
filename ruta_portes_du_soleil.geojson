@@ -1,0 +1,26 @@
+{
+  "type": "Feature",
+  "properties": {
+    "nombre": "Avoriaz - Pas de Chavanette (Swiss Wall) - Morzine",
+    "region": "Portes du Soleil (Francia/Suiza)",
+    "nota": "Perfil orientativo: incluye el tramo de Chavanette, uno de los muros tecnicos mas citados de los Alpes, para probar la clasificacion Roja del motor."
+  },
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [6.7740, 46.1913, 1800],
+      [6.7640, 46.1870, 1900],
+      [6.7520, 46.1820, 2020],
+      [6.7450, 46.1790, 2127],
+      [6.7405, 46.1753, 2010],
+      [6.7385, 46.1738, 1870],
+      [6.7365, 46.1725, 1750],
+      [6.7340, 46.1715, 1680],
+      [6.7300, 46.1800, 1650],
+      [6.7230, 46.1760, 1500],
+      [6.7150, 46.1700, 1350],
+      [6.7110, 46.1750, 1180],
+      [6.7076, 46.1797, 1000]
+    ]
+  }
+}

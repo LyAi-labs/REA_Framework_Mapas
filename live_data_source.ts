@@ -22,7 +22,7 @@
 
 export type EstadoElemento = "open" | "closed" | "closed_outoforder" | "in_preparation" | string;
 
-export type ProveedorFeed = "intermaps" | "lumiplan";
+export type ProveedorFeed = "intermaps" | "lumiplan" | "esquiades";
 
 export interface ElementoIntermaps {
     oid: string;
@@ -40,16 +40,15 @@ export interface DominioEsquiable {
     slugIntermaps?: string;
     /** ID de estación en Lumiplan SkiPlus WS (si proveedor === 'lumiplan') */
     stationIdLumiplan?: number;
+    /** ID de estación en Esquiades (si proveedor === 'esquiades') */
+    idPistaEsquiades?: number;
     idioma: string;
     /** Si false, el dominio esta documentado pero no se consulta */
     activo: boolean;
 }
 
 /**
- * Catalogo de dominios configurables. Solo Portes du Soleil esta `activo: true`
- * por decision explicita (2026-10-19): no cargar mas estaciones todavia, pero
- * dejar la estructura lista para activar una nueva con una sola linea cuando
- * haya contrato real.
+ * Catalogo de dominios configurables.
  */
 export const DOMINIOS_CONFIGURADOS: DominioEsquiable[] = [
     {
@@ -64,10 +63,18 @@ export const DOMINIOS_CONFIGURADOS: DominioEsquiable[] = [
     { id: "skiwelt", nombre: "SkiWelt Wilder Kaiser-Brixental", proveedor: "intermaps", slugIntermaps: "skiwelt", idioma: "de", activo: false },
     { id: "zillertal-3000", nombre: "Zillertal 3000", proveedor: "intermaps", slugIntermaps: "zillertal_3000", idioma: "de", activo: false },
     { id: "silvretta-arena", nombre: "Silvretta Arena Ischgl/Samnaun", proveedor: "intermaps", slugIntermaps: "silvretta_arena", idioma: "de", activo: false },
-    // Estaciones verificadas Lumiplan (Mountain Live REA 2026-10-19):
+    // Estaciones verificadas Lumiplan (Mountain Live / Val d'Isere REA 2026-10-19):
+    { id: "val-disere-lumiplan", nombre: "Val d'Isère (Lumiplan)", proveedor: "lumiplan", stationIdLumiplan: 44, idioma: "fr", activo: false },
+    { id: "tignes-lumiplan", nombre: "Tignes (Lumiplan)", proveedor: "lumiplan", stationIdLumiplan: 43, idioma: "fr", activo: false },
     { id: "courchevel", nombre: "Courchevel - Les 3 Vallées", proveedor: "lumiplan", stationIdLumiplan: 3, idioma: "fr", activo: false },
-    { id: "la-mongie", nombre: "Grand Tourmalet / La Mongie", proveedor: "lumiplan", stationIdLumiplan: 127, idioma: "fr", activo: false },
-    { id: "font-romeu", nombre: "Font Romeu Pyrénées 2000", proveedor: "lumiplan", stationIdLumiplan: 38, idioma: "fr", activo: false }
+    { id: "serre-chevalier-lumiplan", nombre: "Serre Chevalier (Lumiplan)", proveedor: "lumiplan", stationIdLumiplan: 21, idioma: "fr", activo: false },
+    // Estaciones verificadas Esquiades (España, Andorra, Francia REA 2026-10-19):
+    { id: "baqueira-beret", nombre: "Baqueira Beret", proveedor: "esquiades", idPistaEsquiades: 11, idioma: "es", activo: false },
+    { id: "formigal", nombre: "Formigal Panticosa", proveedor: "esquiades", idPistaEsquiades: 16, idioma: "es", activo: false },
+    { id: "sierra-nevada", nombre: "Sierra Nevada", proveedor: "esquiades", idPistaEsquiades: 14, idioma: "es", activo: false },
+    { id: "grandvalira", nombre: "Grandvalira", proveedor: "esquiades", idPistaEsquiades: 1, idioma: "es", activo: false },
+    { id: "cerler", nombre: "Cerler", proveedor: "esquiades", idPistaEsquiades: 18, idioma: "es", activo: false },
+    { id: "val-disere-esquiades", nombre: "Val d'Isère (Esquiades)", proveedor: "esquiades", idPistaEsquiades: 9, idioma: "es", activo: false }
 ];
 
 const CLOSED_STATUSES = new Set<EstadoElemento>(["closed", "closed_outoforder"]);
@@ -213,5 +220,95 @@ export async function obtenerTelemetriaLumiplan(estacionId: number, baseUrl = LU
     }
     const data = (await resp.json()) as RespuestaLumiplanCruda;
     return parsearRespuestaLumiplan(estacionId, data);
+}
+
+// -----------------------------------------------------------------------------
+// Proveedor Esquiades (España, Andorra, Francia, Alpes)
+// Extraído por ingeniería inversa de com.esquiades (Constants.java)
+// Endpoints: /appmovil/json/v1/get_pistas.php y /appmovil/json/v1/info_pista.php?idPista={id}
+// -----------------------------------------------------------------------------
+
+export const ESQUIADES_API_BASE = "https://www.esquiades.com/appmovil/json/v1";
+
+export interface WebcamEsquiades {
+    id: string;
+    url: string;
+    textoUbicacion?: string;
+    fechaActualizacion?: string;
+    tipo?: string;
+}
+
+export interface ParteNieveEsquiades {
+    estacionId: number;
+    nombre: string;
+    abierta: boolean;
+    textoApertura?: string;
+    kmEsquiablesActual: number;
+    kmEsquiablesTotal: number;
+    tipoNieve?: string;
+    pistasTotal: number;
+    pistasAbiertas: number;
+    remontesTotal: number;
+    remontesAbiertos: number;
+    pistasVerdesAbiertas?: number;
+    pistasAzulesAbiertas?: number;
+    pistasRojasAbiertas?: number;
+    pistasNegrasAbiertas?: number;
+    fechaUltimaNevada?: string;
+    cmUltimaNevada?: number;
+    gruesoNieve?: string;
+    webcams: WebcamEsquiades[];
+    actualizadoEn: Date;
+}
+
+export function parsearRespuestaEsquiades(data: any): ParteNieveEsquiades {
+    const est = data.estado ?? {};
+    const webcamsRaw = Array.isArray(data.webcam) ? data.webcam : [];
+
+    const webcams: WebcamEsquiades[] = webcamsRaw.map((w: any) => ({
+        id: String(w.id ?? ""),
+        url: w.url_panoramica || w.url || "",
+        textoUbicacion: w.texto_ubicacion,
+        fechaActualizacion: w.fecha_actualizacion,
+        tipo: w.tipo
+    }));
+
+    return {
+        estacionId: data.id ?? est.pista_id ?? 0,
+        nombre: data.nombre ?? "Estación",
+        abierta: Boolean(est.abierta),
+        textoApertura: est.texto_apertura,
+        kmEsquiablesActual: parseFloat(est.km_esquiables_actual) || 0,
+        kmEsquiablesTotal: parseFloat(est.km_esquiables_total) || 0,
+        tipoNieve: est.tipo_nieve,
+        pistasTotal: parseInt(est.pistas_abiertas_total, 10) || 0,
+        pistasAbiertas: parseInt(est.pistas_abiertas_actual, 10) || 0,
+        remontesTotal: parseInt(est.total_ski_lifts, 10) || 0,
+        remontesAbiertos: parseInt(est.open_ski_lifts, 10) || 0,
+        pistasVerdesAbiertas: est.pistas_verdes_abiertas != null ? parseInt(est.pistas_verdes_abiertas, 10) : undefined,
+        pistasAzulesAbiertas: est.pistas_azules_abiertas != null ? parseInt(est.pistas_azules_abiertas, 10) : undefined,
+        pistasRojasAbiertas: est.pistas_rojas_abiertas != null ? parseInt(est.pistas_rojas_abiertas, 10) : undefined,
+        pistasNegrasAbiertas: est.pistas_negras_abiertas != null ? parseInt(est.pistas_negras_abiertas, 10) : undefined,
+        fechaUltimaNevada: est.fecha_ultima_nevada,
+        cmUltimaNevada: est.cm_ultima_nevada != null ? parseFloat(est.cm_ultima_nevada) : undefined,
+        gruesoNieve: est.grueso_nieve,
+        webcams,
+        actualizadoEn: new Date()
+    };
+}
+
+export async function obtenerParteNieveEsquiades(
+    idPista: number,
+    baseUrl = ESQUIADES_API_BASE
+): Promise<ParteNieveEsquiades> {
+    const url = `${baseUrl.replace(/\/$/, "")}/info_pista.php?idPista=${idPista}`;
+    const resp = await fetch(url, {
+        headers: { "User-Agent": "okhttp/4.12.0" }
+    });
+    if (!resp.ok) {
+        throw new Error(`Fallo al consultar Esquiades idPista=${idPista}: HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return parsearRespuestaEsquiades(data);
 }
 

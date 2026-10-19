@@ -2,158 +2,368 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Motor Topografico 3D - Localhost</title>
+    <title>Motor Topografico 3D - Dents du Midi & Slopes Router</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; background: #111; color: #fff; display: flex; height: 100vh; }
-        #sidebar { width: 350px; padding: 20px; background: #1a1a1a; overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 1000; }
+        #sidebar { width: 360px; padding: 20px; background: #1a1a1a; overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 1000; box-sizing: border-box; }
         #map { flex-grow: 1; height: 100%; }
-        h2 { color: #00e5ff; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .metric-box { background: #2a2a2a; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #00e5ff; }
+        h2 { color: #00e5ff; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 20px; }
+        .metric-box { background: #2a2a2a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 4px solid #00e5ff; font-size: 13px; }
         .file-input { background: #333; padding: 10px; border-radius: 4px; border: 1px dashed #555; width: 100%; box-sizing: border-box; cursor: pointer; color: #ccc; }
-        .legend { margin-top: 20px; font-size: 12px; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
-        .color-box { width: 20px; height: 10px; margin-right: 10px; border-radius: 2px; }
+        .section-title { font-size: 13px; text-transform: uppercase; color: #888; font-weight: bold; margin: 15px 0 8px 0; border-top: 1px solid #333; padding-top: 12px; }
+        .legend { margin-top: 15px; font-size: 11px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 4px; }
+        .color-box { width: 18px; height: 8px; margin-right: 8px; border-radius: 2px; }
+        button.action-btn { background: #00e5ff; color: #111; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 6px; }
+        button.action-btn:hover { background: #33ecff; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; background: #333; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2>Enrutador 3D Real</h2>
-    <p style="font-size: 12px; color: #aaa;">Sube un archivo de ruta (GeoJSON) para procesar el relieve tridimensional con la funcion de Tobler.</p>
+    <h2>Motor 3D & Pistas Alpinas</h2>
+    <p style="font-size: 12px; color: #aaa; margin-top: -5px;">Capa topológica extraída de Slopes y feeds en vivo Lumiplan.</p>
 
-    <input type="file" id="fileRequest" class="file-input" accept=".geojson,.json" />
+    <div class="section-title">Red de Estación (Dents du Midi)</div>
+    <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px; font-weight: bold; color: #00e5ff;">
+        <input type="checkbox" id="toggleDentsDuMidi" checked style="margin-right: 8px;">
+        🎿 Mostrar 70 Pistas + 27 Remontes
+    </label>
+    <div id="pistes-summary" style="font-size: 11px; color: #888; margin-top: 5px;">
+        Cargando trazados vectoriales...
+    </div>
 
-    <div id="resultados" style="margin-top: 20px; display: none;">
-        <div class="metric-box">
-            <strong>Distancia Plana:</strong> <span id="m-dist">0</span> m
-        </div>
-        <div class="metric-box" style="border-left-color: #ffcc00;">
-            <strong>Desnivel Positivo:</strong> +<span id="m-desnivel">0</span> m
-        </div>
+    <div class="section-title">Estación Activa & Telemetría</div>
+    <select id="stationSelector" style="width: 100%; padding: 8px; background: #2a2a2a; color: #00e5ff; font-weight: bold; border: 1px solid #444; border-radius: 4px; margin-bottom: 8px;">
+        <option value="dents-du-midi" selected>🇨🇭 Dents du Midi / Portes du Soleil</option>
+        <option value="val-disere">🇫🇷 Val d'Isère (Lumiplan / CDA)</option>
+        <option value="courchevel">🇫🇷 Courchevel / 3 Vallées (Lumiplan)</option>
+        <option value="baqueira">🇪🇸 Baqueira Beret (Esquiades)</option>
+        <option value="sierra-nevada">🇪🇸 Sierra Nevada (Esquiades)</option>
+        <option value="skiamade">🇦🇹 Ski amadé / Schladming (RealityMaps)</option>
+    </select>
+    <div class="metric-box" style="border-left-color: #3498db;">
+        <div><strong>Estación:</strong> <span id="tele-station">Dents du Midi (CH)</span> <span class="badge" style="background:#2ecc71; color:#000;">EN VIVO</span></div>
+        <div style="margin-top: 3px;"><strong>Nieve Cima / Valle:</strong> <span id="tele-snow">65 cm / 10 cm</span></div>
+        <div><strong>Pistas abiertas:</strong> <span id="tele-slopes">70 pistas vectoriales</span></div>
+        <div><strong>Remontes abiertos:</strong> <span id="tele-lifts">27 remontes activos</span></div>
+        <div id="tele-webcams-info" style="margin-top: 4px; font-size: 11px; color: #aaa;">Webcams: Integradas</div>
+    </div>
+
+    <div class="section-title">Enrutador Dijkstra / Tobler</div>
+    <div style="font-size: 11px; color: #bbb; margin-bottom: 6px;">
+        Haz clic en cualquier remonte o pista para fijar Origen y Destino de navegación.
+    </div>
+    <div class="metric-box" style="border-left-color: #f39c12;">
+        <div><strong>Origen:</strong> <span id="route-start" style="color:#aaa;">(Ninguno seleccionado)</span></div>
+        <div><strong>Destino:</strong> <span id="route-end" style="color:#aaa;">(Ninguno seleccionado)</span></div>
+    </div>
+    <button id="btn-calc-route" class="action-btn" style="display: none;">Calcular Ruta Óptima 3D</button>
+
+    <div id="route-results" style="margin-top: 10px; display: none;">
         <div class="metric-box" style="border-left-color: #2ecc71;">
-            <strong>Tiempo de Marcha:</strong> <span id="m-tiempo">0</span> min
-        </div>
-        <div class="metric-box" style="border-left-color: #e74c3c;">
-            <strong>Carga Metabolica:</strong> <span id="m-carga">0</span> m equiv.
+            <strong>Tiempo Estimado:</strong> <span id="m-tiempo">0</span> min<br>
+            <strong>Distancia Total:</strong> <span id="m-dist">0</span> m<br>
+            <strong>Tramos (Pistas/Remontes):</strong> <span id="m-tramos">0</span>
         </div>
     </div>
 
+    <div class="section-title">Cargar Track Propio (.FIT / .GEOJSON)</div>
+    <input type="file" id="fileRequest" class="file-input" accept=".geojson,.json,.fit" />
+
     <div class="legend">
-        <strong>Codigo cromatico de pendientes:</strong>
-        <div class="legend-item"><div class="color-box" style="background: #2ecc71;"></div> Verde: Seguro (&lt;15%)</div>
-        <div class="legend-item"><div class="color-box" style="background: #f39c12;"></div> Naranja: Moderado (15-35%)</div>
-        <div class="legend-item"><div class="color-box" style="background: #e74c3c;"></div> Rojo: Muro Peligroso (&gt;35%)</div>
-        <div class="legend-item"><div class="color-box" style="background: #3498db;"></div> Azul: Descenso Tecnico</div>
+        <strong>Código de Dificultad de Pistas:</strong>
+        <div class="legend-item"><div class="color-box" style="background: #2980b9;"></div> Azul: Fácil / Debutants</div>
+        <div class="legend-item"><div class="color-box" style="background: #c0392b;"></div> Roja: Intermedia</div>
+        <div class="legend-item"><div class="color-box" style="background: #111; border: 1px solid #777;"></div> Negra: Experto / Muro</div>
+        <div class="legend-item"><div class="color-box" style="background: #f1c40f;"></div> Amarilla / Off-Piste</div>
+        <div class="legend-item"><div class="color-box" style="background: #e67e22; border-top: 2px dashed #fff;"></div> Naranja: Remonte (Telesilla/Telecabina)</div>
     </div>
 </div>
 
 <div id="map"></div>
 
-<script>
-    var map = L.map('map').setView([37.0560, -3.4795], 14);
+<script type="module">
+    import { crearGrafoDesdeSlopesGeoJSON } from './dist/graph_router.js';
+    import { analizarRutaGeoJSON } from './dist/turf_framework_core.js';
+    import { FitBinaryParser } from './dist/strava_fit_parser.js';
+
+    var fitParser = new FitBinaryParser();
+    var map = L.map('map').setView([46.1950, 6.8400], 13); // Centrado en Champéry / Dents du Midi
 
     L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         maxZoom: 17,
         attribution: 'Map data: OpenStreetMap, SRTM | Style: OpenTopoMap'
     }).addTo(map);
 
-    var trackPrueba = [
-        [-3.4812, 37.0543, 2100],
-        [-3.4795, 37.0560, 2105],
-        [-3.4750, 37.0610, 2350],
-        [-3.4720, 37.0635, 2330],
-        [-3.4685, 37.0660, 2500]
-    ];
+    var layerPistas = L.layerGroup().addTo(map);
+    var layerRemontes = L.layerGroup().addTo(map);
+    var layerRutaOptima = L.layerGroup().addTo(map);
+    var layerTrackUsuario = L.layerGroup().addTo(map);
 
-    var rutaLayers = [];
+    var grafoDentsDuMidi = null;
+    var nodoOrigen = null;
+    var nodoDestino = null;
 
-    procesarMatrizPuntos(trackPrueba);
+    // Cargar mapa vectorial de Dents du Midi
+    fetch('./dents_du_midi_pistes.json')
+        .then(r => r.json())
+        .then(data => {
+            grafoDentsDuMidi = crearGrafoDesdeSlopesGeoJSON(data, 50);
+            renderizarRedDentsDuMidi(data);
+            document.getElementById('pistes-summary').innerText =
+                `${data.runs.length} pistas y ${data.lifts.length} remontes activos en grafo topológico.`;
+        })
+        .catch(err => {
+            console.error("No se pudo cargar dents_du_midi_pistes.json", err);
+            document.getElementById('pistes-summary').innerText = "Error cargando archivo vectorial.";
+        });
 
+    function colorPista(dificultad) {
+        switch((dificultad || '').toLowerCase()) {
+            case 'easy': case 'very_easy': return '#2980b9'; // Azul
+            case 'intermediate': return '#c0392b';           // Rojo
+            case 'advanced': case 'expert': return '#111111'; // Negro
+            case 'off-piste': return '#f1c40f';              // Amarillo
+            default: return '#27ae60';                       // Verde
+        }
+    }
+
+    function renderizarRedDentsDuMidi(data) {
+        layerPistas.clearLayers();
+        layerRemontes.clearLayers();
+
+        // 1. Pistas
+        for (const run of data.runs || []) {
+            const geoms = run.geometries || [];
+            if (!geoms.length) continue;
+            const coords = geoms[0].coordinates.map(c => [c[1], c[0]]);
+            const props = run.properties || {};
+            const col = colorPista(props['piste:difficulty']);
+
+            const polyline = L.polyline(coords, {
+                color: col,
+                weight: 4,
+                opacity: 0.85
+            });
+
+            polyline.bindPopup(`
+                <strong>🎿 Pista: ${props.name || 'Sin nombre'}</strong><br>
+                Dificultad: <b>${props['piste:difficulty'] || 'Standard'}</b><br>
+                <div style="margin-top:6px;">
+                    <button class="set-pt-btn" data-role="start" data-lat="${coords[0][0]}" data-lon="${coords[0][1]}" data-name="${props.name || 'Pista'} (Inicio)">Fijar como Origen</button>
+                    <button class="set-pt-btn" data-role="end" data-lat="${coords[coords.length-1][0]}" data-lon="${coords[coords.length-1][1]}" data-name="${props.name || 'Pista'} (Fin)">Fijar como Destino</button>
+                </div>
+            `);
+            layerPistas.addLayer(polyline);
+        }
+
+        // 2. Remontes
+        for (const lift of data.lifts || []) {
+            const geoms = lift.geometries || [];
+            if (!geoms.length) continue;
+            const coords = geoms[0].coordinates.map(c => [c[1], c[0]]);
+            const props = lift.properties || {};
+
+            const polyline = L.polyline(coords, {
+                color: '#e67e22',
+                dashArray: '6, 6',
+                weight: 4,
+                opacity: 0.95
+            });
+
+            polyline.bindPopup(`
+                <strong>🚠 Remonte: ${props.name || 'Telesilla'}</strong><br>
+                Tipo: <b>${props.aerialway || 'chair_lift'}</b><br>
+                <div style="margin-top:6px;">
+                    <button class="set-pt-btn" data-role="start" data-lat="${coords[0][0]}" data-lon="${coords[0][1]}" data-name="${props.name || 'Remonte'} (Base)">Fijar como Origen</button>
+                    <button class="set-pt-btn" data-role="end" data-lat="${coords[coords.length-1][0]}" data-lon="${coords[coords.length-1][1]}" data-name="${props.name || 'Remonte'} (Cima)">Fijar como Destino</button>
+                </div>
+            `);
+            layerRemontes.addLayer(polyline);
+        }
+    }
+
+    // Toggle de visibilidad de pistas
+    document.getElementById('toggleDentsDuMidi').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            map.addLayer(layerPistas);
+            map.addLayer(layerRemontes);
+        } else {
+            map.removeLayer(layerPistas);
+            map.removeLayer(layerRemontes);
+        }
+    });
+
+    // Selector de estación multirregión
+    const estacionesInfo = {
+        'dents-du-midi': {
+            nombre: 'Dents du Midi (CH)',
+            coords: [46.1950, 6.8400],
+            zoom: 13,
+            nieve: '65 cm / 10 cm',
+            pistas: '70 pistas vectoriales',
+            remontes: '27 remontes activos',
+            webcams: 'Webcams: Champéry, Morgins, Champoussin'
+        },
+        'val-disere': {
+            nombre: 'Val d\'Isère (FR)',
+            coords: [45.4480, 6.9800],
+            zoom: 13,
+            nieve: '119 cm (Valle) / 0 cm',
+            pistas: '154 km pistas (Lumiplan / CDA)',
+            remontes: '5 remontes abiertos / 14 webcams',
+            webcams: '14 Webcams: Crête Lessières, Bellevarde, Manchet'
+        },
+        'courchevel': {
+            nombre: 'Courchevel / 3 Vallées (FR)',
+            coords: [45.4150, 6.6340],
+            zoom: 13,
+            nieve: '65 cm / 10 cm',
+            pistas: '85 / 109 pistas (78%)',
+            remontes: '50 / 57 remontes (88%)',
+            webcams: '34 Webcams en tiempo real'
+        },
+        'baqueira': {
+            nombre: 'Baqueira Beret (ES)',
+            coords: [42.7270, 0.9677],
+            zoom: 13,
+            nieve: '40 - 120 cm (Polvo)',
+            pistas: '173 km (131 pistas)',
+            remontes: '36 remontes (Esquiades API)',
+            webcams: '21 Webcams: Bonaigua, Beret, Baqueira 1800'
+        },
+        'sierra-nevada': {
+            nombre: 'Sierra Nevada (ES)',
+            coords: [37.0930, -3.3980],
+            zoom: 13,
+            nieve: '20 - 85 cm',
+            pistas: '110 km (131 pistas)',
+            remontes: '21 remontes (Esquiades API)',
+            webcams: '24 Webcams: Borreguiles, Veleta, Pradollano'
+        },
+        'skiamade': {
+            nombre: 'Ski amadé / Schladming (AT)',
+            coords: [47.3800, 13.2000],
+            zoom: 12,
+            nieve: '80 - 145 cm',
+            pistas: '760 km esquiables en 5 regiones',
+            remontes: '270 remontes (Grafo RealityMaps)',
+            webcams: '2.142 aristas y 1.245 vértices topológicos'
+        }
+    };
+
+    document.getElementById('stationSelector').addEventListener('change', (e) => {
+        const est = estacionesInfo[e.target.value];
+        if (!est) return;
+        document.getElementById('tele-station').innerText = est.nombre;
+        document.getElementById('tele-snow').innerText = est.nieve;
+        document.getElementById('tele-slopes').innerText = est.pistas;
+        document.getElementById('tele-lifts').innerText = est.remontes;
+        document.getElementById('tele-webcams-info').innerText = est.webcams;
+        map.flyTo(est.coords, est.zoom, { duration: 1.5 });
+    });
+
+    // Manejo de botones de selección en Popups
+    document.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('set-pt-btn')) return;
+        const role = e.target.getAttribute('data-role');
+        const lat = parseFloat(e.target.getAttribute('data-lat'));
+        const lon = parseFloat(e.target.getAttribute('data-lon'));
+        const name = e.target.getAttribute('data-name');
+
+        if (role === 'start') {
+            nodoOrigen = { lat, lon, name };
+            document.getElementById('route-start').innerText = name;
+        } else {
+            nodoDestino = { lat, lon, name };
+            document.getElementById('route-end').innerText = name;
+        }
+
+        if (nodoOrigen && nodoDestino) {
+            document.getElementById('btn-calc-route').style.display = 'block';
+        }
+    });
+
+    // Calculador de ruta con Grafo Dijkstra
+    document.getElementById('btn-calc-route').addEventListener('click', () => {
+        if (!grafoDentsDuMidi || !nodoOrigen || !nodoDestino) return;
+
+        // Encontrar nodos mas cercanos en el grafo
+        const startNode = encontrarNodoMasCercano(nodoOrigen.lat, nodoOrigen.lon);
+        const endNode = encontrarNodoMasCercano(nodoDestino.lat, nodoDestino.lon);
+
+        if (!startNode || !endNode) {
+            alert('No se encontraron nodos cercanos en el grafo de pistas.');
+            return;
+        }
+
+        const ruta = grafoDentsDuMidi.calcularRutaOptima(startNode.id, endNode.id);
+        if (!ruta) {
+            alert('No hay conexion esquiable continua entre estos dos puntos.');
+            return;
+        }
+
+        layerRutaOptima.clearLayers();
+        const latLngs = [];
+        for (const t of ruta.tramos) {
+            const seg = [[t.desde.lat, t.desde.lon], [t.hasta.lat, t.hasta.lon]];
+            latLngs.push(seg[0], seg[1]);
+            const col = t.tipo === 'remonte' ? '#ff00ff' : '#00e5ff';
+            layerRutaOptima.addLayer(L.polyline(seg, { color: col, weight: 6, opacity: 1.0 }));
+        }
+
+        document.getElementById('m-tiempo').innerText = ruta.tiempoTotalMinutos;
+        document.getElementById('m-dist').innerText = ruta.distanciaTotal;
+        document.getElementById('m-tramos').innerText = ruta.tramos.length;
+        document.getElementById('route-results').style.display = 'block';
+
+        map.fitBounds(L.latLngBounds(latLngs).pad(0.15));
+    });
+
+    function encontrarNodoMasCercano(lat, lon) {
+        if (!grafoDentsDuMidi) return null;
+        return grafoDentsDuMidi.encontrarNodoMasCercano(lat, lon);
+    }
+
+    // Manejo de archivo .FIT / .GEOJSON del usuario
     document.getElementById('fileRequest').addEventListener('change', function(e) {
         var file = e.target.files[0];
         if (!file) return;
 
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-            try {
+        if (/\.fit$/i.test(file.name)) {
+            var readerBin = new FileReader();
+            readerBin.onload = function(evt) {
+                var geojson = fitParser.archivoAGeoJSON(new Uint8Array(evt.target.result));
+                if (geojson) renderizarTrackUsuario(geojson.geometry.coordinates);
+            };
+            readerBin.readAsArrayBuffer(file);
+        } else {
+            var readerTxt = new FileReader();
+            readerTxt.onload = function(evt) {
                 var geojson = JSON.parse(evt.target.result);
-                var coords = [];
-                if (geojson.geometry && geojson.geometry.coordinates) {
-                    coords = geojson.geometry.coordinates;
-                } else if (geojson.features && geojson.features.length > 0) {
-                    coords = geojson.features[0].geometry.coordinates;
-                } else if (geojson.coordinates) {
-                    coords = geojson.coordinates;
-                }
-                if (coords.length > 0) {
-                    procesarMatrizPuntos(coords);
-                } else {
-                    alert('No se encontraron coordenadas validas.');
-                }
-            } catch(err) {
-                alert('Error al parsear el archivo GeoJSON: ' + err.message);
-            }
-        };
-        reader.readAsText(file);
+                var coords = geojson.geometry ? geojson.geometry.coordinates : (geojson.coordinates || []);
+                if (coords.length) renderizarTrackUsuario(coords);
+            };
+            readerTxt.readAsText(file);
+        }
     });
 
-    function calcularHaversine(lon1, lat1, lon2, lat2) {
-        var R = 6371000;
-        var dLat = (lat2 - lat1) * Math.PI / 180;
-        var dLon = (lon2 - lon1) * Math.PI / 180;
-        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    function procesarMatrizPuntos(puntos) {
-        for (var j = 0; j < rutaLayers.length; j++) {
-            map.removeLayer(rutaLayers[j]);
-        }
-        rutaLayers = [];
-
-        var distTotal = 0, tiempoTotal = 0, desnivelPos = 0;
-        var latLngsForBounds = [];
+    function renderizarTrackUsuario(puntos) {
+        layerTrackUsuario.clearLayers();
+        var resumen = analizarRutaGeoJSON({ geometry: { coordinates: puntos } });
+        var latLngs = [];
 
         for (var i = 0; i < puntos.length - 1; i++) {
-            var p1 = puntos[i], p2 = puntos[i + 1];
-            var distH = calcularHaversine(p1[0], p1[1], p2[0], p2[1]);
-            var dZ = p2[2] - p1[2];
-
-            if (dZ > 0) desnivelPos += dZ;
-
-            var pct = distH > 0 ? (dZ / distH) * 100 : 0;
-            var seno = distH > 0 ? dZ / distH : 0;
-
-            var vel = 6 * Math.exp(-3.5 * Math.abs(seno + 0.05));
-            var t = vel > 0 ? ((distH / 1000) / vel) * 60 : 0;
-
-            distTotal += distH;
-            tiempoTotal += t;
-
-            var color = '#2ecc71';
-            if (dZ < -5) color = '#3498db';
-            else if (Math.abs(pct) > 35) color = '#e74c3c';
-            else if (Math.abs(pct) > 15) color = '#f39c12';
-
-            var coordA = [p1[1], p1[0]];
-            var coordB = [p2[1], p2[0]];
-            latLngsForBounds.push(coordA, coordB);
-
-            var line = L.polyline([coordA, coordB], { color: color, weight: 5, opacity: 0.9 }).addTo(map);
-            rutaLayers.push(line);
+            var coordA = [puntos[i][1], puntos[i][0]];
+            var coordB = [puntos[i+1][1], puntos[i+1][0]];
+            latLngs.push(coordA, coordB);
+            layerTrackUsuario.addLayer(L.polyline([coordA, coordB], { color: '#ffea00', weight: 5, opacity: 0.9 }));
         }
-
-        document.getElementById('m-dist').innerText = Math.round(distTotal);
-        document.getElementById('m-desnivel').innerText = Math.round(desnivelPos);
-        document.getElementById('m-tiempo').innerText = Math.round(tiempoTotal);
-        document.getElementById('m-carga').innerText = Math.round(distTotal + (desnivelPos * 10));
-        document.getElementById('resultados').style.display = 'block';
-
-        map.fitBounds(L.latLngBounds(latLngsForBounds).pad(0.1));
+        map.fitBounds(L.latLngBounds(latLngs).pad(0.1));
     }
 </script>
 </body>

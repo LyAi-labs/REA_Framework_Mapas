@@ -4,7 +4,8 @@ import {
     DOMINIOS_CONFIGURADOS,
     parsearRespuestaIntermaps,
     oidsCerrados,
-    obtenerEstadoDominio
+    obtenerEstadoDominio,
+    parsearRespuestaEsquiades
 } from "../live_data_source.js";
 
 test("solo Portes du Soleil esta activo; el resto esta configurado pero inactivo", () => {
@@ -106,5 +107,57 @@ test("parsea telemetria real de estacion Lumiplan (Courchevel / Mountain Live)",
     assert.equal(telemetria.remonteesAbiertos, 50);
     assert.equal(telemetria.porcentajePistasAbiertas, 78);
     assert.equal(telemetria.porcentajeRemonteesAbiertos, 88);
+});
+
+test("parsearRespuestaEsquiades normaliza partes de nieve y webcams en vivo", () => {
+    const mockBaqueira = {
+        id: 11,
+        nombre: "Baqueira Beret",
+        estado: {
+            pista_id: 11,
+            km_esquiables_actual: 45.5,
+            km_esquiables_total: 173,
+            tipo_nieve: "Polvo",
+            pistas_abiertas_actual: 35,
+            pistas_abiertas_total: 131,
+            fecha_ultima_nevada: "2026-10-19",
+            cm_ultima_nevada: 64,
+            abierta: true,
+            pistas_verdes_abiertas: 4,
+            pistas_azules_abiertas: 15,
+            pistas_rojas_abiertas: 12,
+            pistas_negras_abiertas: 4,
+            grueso_nieve: "40 - 120",
+            open_ski_lifts: 22,
+            total_ski_lifts: 36,
+            texto_apertura: "Estación abierta"
+        },
+        webcam: [
+            {
+                id: "3244",
+                url: "https://content.esquiades.com/rs/900/600/img/pistes/11/webcams/webcam_107.jpg",
+                url_panoramica: "https://content.esquiades.com/img/pistes/11/webcams/webcam_107.jpg",
+                texto_ubicacion: "Bonaigua",
+                fecha_actualizacion: "2026-10-19 17:30:41",
+                tipo: "panoramica"
+            }
+        ]
+    };
+
+    const parte = parsearRespuestaEsquiades(mockBaqueira);
+    assert.equal(parte.estacionId, 11);
+    assert.equal(parte.nombre, "Baqueira Beret");
+    assert.equal(parte.abierta, true);
+    assert.equal(parte.kmEsquiablesActual, 45.5);
+    assert.equal(parte.kmEsquiablesTotal, 173);
+    assert.equal(parte.tipoNieve, "Polvo");
+    assert.equal(parte.pistasAbiertas, 35);
+    assert.equal(parte.pistasTotal, 131);
+    assert.equal(parte.remontesAbiertos, 22);
+    assert.equal(parte.remontesTotal, 36);
+    assert.equal(parte.cmUltimaNevada, 64);
+    assert.equal(parte.webcams.length, 1);
+    assert.equal(parte.webcams[0].textoUbicacion, "Bonaigua");
+    assert.equal(parte.webcams[0].url, "https://content.esquiades.com/img/pistes/11/webcams/webcam_107.jpg");
 });
 

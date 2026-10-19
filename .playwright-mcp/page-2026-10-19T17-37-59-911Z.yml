@@ -1,0 +1,50 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Enrutador 3D Real" [level=2] [ref=e3]
+    - paragraph [ref=e4]: Sube un archivo de ruta (GeoJSON) para procesar el relieve tridimensional con la funcion de Tobler.
+    - button "Choose File" [ref=e5] [cursor=pointer]
+    - paragraph [ref=e6]: Acepta GeoJSON 3D o binarios .FIT (Garmin/Strava).
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - strong [ref=e9]: "Distancia Plana:"
+        - text: 7638 m
+      - generic [ref=e10]:
+        - strong [ref=e11]: "Desnivel Positivo:"
+        - text: +327 m
+      - generic [ref=e12]:
+        - strong [ref=e13]: "Tiempo de Marcha:"
+        - text: 158 min
+      - generic [ref=e14]:
+        - strong [ref=e15]: "Carga Metabolica:"
+        - text: 10908 m equiv.
+    - generic [ref=e16]:
+      - strong [ref=e17]: "Codigo cromatico de pendientes:"
+      - generic [ref=e18]: "Verde: Seguro (<15%)"
+      - generic [ref=e20]: "Naranja: Moderado (15-35%)"
+      - generic [ref=e22]: "Rojo: Muro Peligroso (>35%)"
+      - generic [ref=e24]: "Azul: Descenso Tecnico"
+  - generic [ref=e26]:
+    - generic:
+      - generic:
+        - img:
+          - generic:
+            - generic [ref=e27] [cursor=pointer]
+            - generic [ref=e28] [cursor=pointer]
+            - generic [ref=e29] [cursor=pointer]
+            - generic [ref=e30] [cursor=pointer]
+            - generic [ref=e31] [cursor=pointer]
+            - generic [ref=e32] [cursor=pointer]
+            - generic [ref=e33] [cursor=pointer]
+            - generic [ref=e34] [cursor=pointer]
+            - generic [ref=e35] [cursor=pointer]
+            - generic [ref=e36] [cursor=pointer]
+            - generic [ref=e37] [cursor=pointer]
+            - generic [ref=e38] [cursor=pointer]
+    - generic:
+      - generic [ref=e39]:
+        - button "Zoom in" [ref=e40] [cursor=pointer]: +
+        - button "Zoom out" [ref=e41] [cursor=pointer]: −
+      - generic [ref=e42]:
+        - link "Leaflet" [ref=e43] [cursor=pointer]:
+          - /url: https://leafletjs.com
+        - text: "| Map data: OpenStreetMap, SRTM | Style: OpenTopoMap"
